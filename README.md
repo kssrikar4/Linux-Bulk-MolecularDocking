@@ -1,124 +1,122 @@
-# Linux-Bulk-MolecularDocking
-Automated Bulk Docking Pipeline
----
+# Automated Bulk Molecular Docking Pipeline
 
-This repository provides a automated pipeline for **bulk molecular docking** using [AutoDock Vina](http://vina.scripps.edu/) and optional affinity extraction. It is designed for docking multiple ligands to a single receptor efficiently.
+A automated pipeline for bulk molecular docking using AutoDock Vina. This toolkit enables high-throughput docking of multiple ligands against multiple receptor targets with minimal user intervention.
 
 ## Project Structure
 
-```bash
-.
-├── dock.sh                  # ✅ Bulk docking script
-├── extract_affinities.sh    # ✅ Extracts best affinities from Vina output
-├── gridsize.py              # ✅ Calculates Vina grid box from PDB
-├── protein.pdbqt            # 🔁 receptor file in .pdbqt format
-├── protein.conf             # 🔁 Vina config file (grid box settings)
-├── ligands/                 # 🔁 directory of ligand .pdbqt files
-└── docking_results/         # ⚙️ Auto-generated output folder after running `dock.sh`
 ```
-
-### Legend
-
-* ✅ **Created by this repo** — tools/scripts maintained here
-* 🔁 **Provided by user** — inputs that you supply to run the docking
-* ⚙️ **Generated** — outputs automatically created during execution
-
+.
+├── Protein/                    # Receptor files (.pdbqt or .pdb)
+├── Ligand/                     # Ligand files (.pdbqt)
+├── config_files/               # Auto-generated configuration files
+├── docking_results/            # Docking outputs and analysis
+├── protein_ligand_complexes/   # Best protein-ligand complexes
+├── gridsize.py                 # Grid parameter calculator
+├── autodock_pipeline.py        # Main docking pipeline
+├── combine_complexes.py        # Complex structure builder
+└── extract_affinities.sh       # Affinity data extractor
+```
 
 ## Setup Instructions
 
-### 1. **Dependencies**
+### 1. Prerequisites
 
-* [AutoDock Vina](https://github.com/ccsb-scripps/AutoDock-Vina/releases)
-* Python 3.x with `numpy`
+- [**AutoDock Vina**](https://github.com/ccsb-scripps/AutoDock-Vina/releases)
+- **Python 3.7+** with packages: `numpy`, `pandas`
+- **Open Babel** (for file format conversion)
 
-### 2. **Prepare Inputs**
+### 2. Input Preparation
 
-* Convert your receptor and ligands to `.pdbqt` format.
-* Place all ligand `.pdbqt` files in the `ligands/` folder.
-* Create a config file (`protein.conf`) specifying:
-
-  * `center_x`, `center_y`, `center_z`
-  * `size_x`, `size_y`, `size_z`
-
-#### Example: `protein.conf`
-
-This file defines the **search space** and **docking settings** for AutoDock Vina. Here's an example:
-
-```conf
-center_x = 0.00
-center_y = 0.00
-center_z = 0.00
-
-size_x = 80.00
-size_y = 80.00
-size_z = 80.00
-
-energy_range = 3
-exhaustiveness = 8
-```
-Explanation of Fields
-
-| Parameter        | Description                                                                            |
-| ---------------- | -------------------------------------------------------------------------------------- |
-| `center_x/y/z`   | Coordinates (in Å) for the **center** of the docking box.                              |
-| `size_x/y/z`     | Dimensions (in Å) of the docking box along each axis. Larger sizes explore more space. |
-| `energy_range`   | Max energy difference (in kcal/mol) between best and worst poses to report.            |
-| `exhaustiveness` | Determines **search depth**. Higher values = more accurate but slower.                 |
-
-
-#### Grid Box Setup
-
-Use the `gridsize.py` script to calculate the optimal center and size values from your receptor `.pdb` file:
-
+#### Convert Ligands to PDBQT Format
 ```bash
-python gridsize.py protein.pdb
-```
-This prints:
-
-```
-CENTER_X = ...
-CENTER_Y = ...
-...
-SIZE_Z = ...
+# Install Open Babel
+sudo apt update && sudo apt install openbabel
 ```
 
-Use these in your `protein.conf`.
-
-## Run Bulk Docking
-
+- Convert all SDF files in Ligand folder
 ```bash
-chmod +x dock.sh
-./dock.sh
+for f in *.sdf; do 
+    echo "Converting $f..."; 
+    obabel "$f" -O "${f%.sdf}.pdbqt"; 
+done
 ```
 
-* Each ligand is docked to the receptor using Vina.
-* Results are saved in `docking_results/`, with one `.pdbqt` and `.txt` file per ligand.
+or 
 
-## Extract Binding Affinities
-
-After docking is complete:
-
+- Convert all PDB files in Ligand folder
 ```bash
-chmod +x extract_affinities.sh
-./extract_affinities.sh
+for f in *.pdb; do 
+    echo "Converting $f..."; 
+    obabel "$f" -O "${f%.pdb}.pdbqt"; 
+done
 ```
 
-* Parses each `*_output.txt` file from Vina
-* Extracts the best affinity (lowest energy pose)
-* Saves them to `best_affinities.csv` (sorted from strongest to weakest binder)
+#### Prepare Receptor Files
+```bash
+# Install AutoDockTools (one-time setup)
+python -m pip install git+https://github.com/Valdes-Tresanco-MS/AutoDockTools_py3
 
-## Output
-
-You’ll get:
-
-* Docked poses: `ligandname_out.pdbqt`
-* Vina stdout: `ligandname_output.txt`
-* Affinity summary: `best_affinities.csv`
-
-## Example Output (`best_affinities.csv`)
-
-```csv
-Filename,Best Affinity (kcal/mol)
-lig1_output.txt,-9.7
-lig2_output.txt,-8.5
+# Convert receptor PDB files to PDBQT
+for f in *.pdb; do
+    echo "Preparing ${f%.pdb}.pdbqt ..."
+    python -m AutoDockTools.Utilities24.prepare_receptor4 -r "$f" -o "${f%.pdb}.pdbqt" -A checkhydrogens
+done
 ```
+
+### 3. Run Docking Pipeline
+
+Execute the main automated docking workflow:
+```bash
+python autodock_pipeline.py
+```
+
+### 4. Generate Complex Structures
+
+After docking completion, create protein-ligand complex files:
+```bash
+python combine_complexes.py
+```
+
+## Output Description
+
+### Primary Results
+- **docking_results/**: Individual docking outputs organized by protein
+  - PDBQT files of docked poses
+  - Detailed docking logs
+  - CSV files with affinity rankings
+  - Summary CSV across all proteins
+
+### Complex Structures  
+- **protein_ligand_complexes/**: Ready-to-visualize structures
+  - Best-scoring protein-ligand complexes in PDB format
+  - Suitable for molecular visualization software
+
+## Utility Scripts
+
+- **gridsize.py**: Calculate optimal grid box parameters for docking
+- **extract_affinities.sh**: Extract and sort binding affinities from log files
+
+## Features
+
+- **High-Throughput**: Process multiple proteins and ligands simultaneously
+- **Automated Grid Detection**: Automatic calculation of binding site boxes
+- **Comprehensive Reporting**: Ranked results with detailed affinity data
+- **Complex Generation**: Ready-to-use structures for visualization
+- **Error Resilience**: Robust error handling and progress tracking
+
+## Usage Notes
+
+- Ensure Vina executable is in your PATH or update `VINA_EXECUTABLE` in the script
+- Protein and ligand files should be properly prepared (charges, hydrogens)
+- Default docking parameters can be modified in `autodock_pipeline.py`
+
+## Acknowledgements
+
+This pipeline utilizes:
+
+- **AutoDock Vina** - For molecular docking calculations ([DOI: 10.1002/jcc.21334](https://doi.org/10.1002/jcc.21334))
+- **AutoDockTools_py3** - For PDB to PDBQT file preparation ([GitHub](https://github.com/Valdes-Tresanco-MS/AutoDockTools_py3))
+
+## License
+
+This project is provided for academic and research use. Please cite the original tools (Vina and AutoDockTools) in any publications resulting from their use.

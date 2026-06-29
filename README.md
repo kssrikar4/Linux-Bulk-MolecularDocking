@@ -11,10 +11,13 @@ A automated pipeline for bulk molecular docking using AutoDock Vina. This toolki
 ├── config_files/               # Auto-generated configuration files
 ├── docking_results/            # Docking outputs and analysis
 ├── protein_ligand_complexes/   # Best protein-ligand complexes
+├── interaction_images/         # PyMOL interaction images
 ├── gridsize.py                 # Grid parameter calculator
 ├── autodock_pipeline.py        # Main docking pipeline
 ├── combine_complexes.py        # Complex structure builder
-└── extract_affinities.sh       # Affinity data extractor
+├── analyze_interactions.py     # Interaction analyzer and visualizer
+├── extract_affinities.sh       # Affinity data extractor
+└── docking_interactions.xlsx    # Interaction profiling Excel report
 ```
 
 ## Setup Instructions
@@ -22,7 +25,8 @@ A automated pipeline for bulk molecular docking using AutoDock Vina. This toolki
 ### 1. Prerequisites
 
 - [**AutoDock Vina**](https://github.com/ccsb-scripps/AutoDock-Vina/releases)
-- **Python 3.7+** with packages: `numpy`, `pandas`
+- **Python 3.7+** with packages: `numpy`, `pandas`, `openpyxl`, `plip`
+- [**PyMOL**](https://pymol.org/) (for interaction visualization)
 - **Open Babel** (for file format conversion)
 
 ### 2. Input Preparation
@@ -30,7 +34,8 @@ A automated pipeline for bulk molecular docking using AutoDock Vina. This toolki
 #### Convert Ligands to PDBQT Format
 ```bash
 # Install Open Babel
-sudo apt update && sudo apt install openbabel
+sudo apt update
+sudo apt install -y openbabel python3-openbabel pymol
 ```
 
 - Convert all SDF files in Ligand folder
@@ -67,6 +72,9 @@ done
 
 Execute the main automated docking workflow:
 ```bash
+#one-time setup
+pip install numpy pandas openpyxl plip pymol-open-source
+
 python autodock_pipeline.py
 ```
 
@@ -75,6 +83,13 @@ python autodock_pipeline.py
 After docking completion, create protein-ligand complex files:
 ```bash
 python combine_complexes.py
+```
+
+### 5. Analyze Interactions and Visualizations
+
+Analyze interaction profiles and generate PyMOL-rendered 3D visualization images:
+```bash
+python analyze_interactions.py
 ```
 
 ## Output Description
@@ -91,6 +106,10 @@ python combine_complexes.py
   - Best-scoring protein-ligand complexes in PDB format
   - Suitable for molecular visualization software
 
+### Interaction Analysis
+- **interaction_images/**: PyMOL-rendered 3D visualization of protein-ligand interactions organized by ligand
+- **docking_interactions.xlsx**: Multi-sheet Excel workbook compiling interaction profiles, bond/contact counts, and list of interacting residues for each ligand
+
 ## Utility Scripts
 
 - **gridsize.py**: Calculate optimal grid box parameters for docking
@@ -102,6 +121,7 @@ python combine_complexes.py
 - **Automated Grid Detection**: Automatic calculation of binding site boxes
 - **Comprehensive Reporting**: Ranked results with detailed affinity data
 - **Complex Generation**: Ready-to-use structures for visualization
+- **Interaction Profiling**: Automated detection of hydrogen bonds, hydrophobic contacts, salt bridges, pi-interactions, and halogen bonds, paired with PyMOL-rendered 3D interaction diagrams
 - **Error Resilience**: Robust error handling and progress tracking
 
 ## Usage Notes
@@ -116,6 +136,8 @@ This pipeline utilizes:
 
 - **AutoDock Vina** - For molecular docking calculations ([DOI: 10.1002/jcc.21334](https://doi.org/10.1002/jcc.21334))
 - **AutoDockTools_py3** - For PDB to PDBQT file preparation ([GitHub](https://github.com/Valdes-Tresanco-MS/AutoDockTools_py3))
+- **PLIP (Protein-Ligand Interaction Profiler)** - For interaction analysis ([GitHub](https://github.com/pharmai/plip))
+- **PyMOL** - For molecular visualization and figure generation ([Website](https://pymol.org/))
 
 ## License
 
